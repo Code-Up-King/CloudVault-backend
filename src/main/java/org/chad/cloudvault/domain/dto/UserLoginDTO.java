@@ -3,7 +3,7 @@ package org.chad.cloudvault.domain.dto;
 import lombok.Data;
 
 @Data
-public class UserRegisterDTO {
+public class UserLoginDTO {
     /**
      * 用户名
      */
@@ -13,9 +13,4 @@ public class UserRegisterDTO {
      * 密码
      */
     private String password;
-
-    /**
-     * 确认密码
-     */
-    private String confirmPassword;
 }

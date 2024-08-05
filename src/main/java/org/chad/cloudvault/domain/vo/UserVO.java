@@ -10,7 +10,7 @@ public class UserVO {
     private Long id;
 
     /**
-     * 用户姓名
+     * 用户名
      */
     private String username;
 

@@ -1,5 +1,8 @@
 package org.chad.cloudvault.common.user;
 
+import lombok.Data;
+
+@Data
 public class UserDTO {
     /**
      * 用户ID

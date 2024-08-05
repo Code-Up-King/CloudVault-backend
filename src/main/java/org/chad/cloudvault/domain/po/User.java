@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.chad.cloudvault.common.database.BaseDO;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -16,7 +17,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Builder
 @TableName("t_user")
-public class User implements Serializable {
+public class User extends BaseDO implements Serializable{
 
     private static final long serialVersionUID = 1L;
 
@@ -27,7 +28,7 @@ public class User implements Serializable {
     private Long id;
 
     /**
-     * 用户姓名
+     * 用户名
      */
     private String username;
 
@@ -41,14 +42,4 @@ public class User implements Serializable {
      * 用户头像
      */
     private String icon = "";
-
-    /**
-     * 创建时间
-     */
-    private LocalDateTime createTime;
-
-    /**
-     * 更新时间
-     */
-    private LocalDateTime updateTime;
 }
