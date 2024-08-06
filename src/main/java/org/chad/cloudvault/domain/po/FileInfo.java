@@ -22,7 +22,7 @@ public class FileInfo extends BaseDO implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @TableId
-    private String fileId; // 文件ID
+    private Long fileId; // 文件ID
 
     @TableField("user_id")
     private Long userId; // 用户ID
@@ -31,7 +31,7 @@ public class FileInfo extends BaseDO implements Serializable {
     private String fileMd5; // md5值，第一次上传记录
 
     @TableField("file_pid")
-    private String filePid; // 父级ID
+    private Long filePid; // 父级ID
 
     @TableField("file_size")
     private Long fileSize; // 文件大小

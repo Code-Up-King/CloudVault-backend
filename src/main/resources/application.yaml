@@ -29,3 +29,6 @@ mybatis-plus:
       logic-delete-field: deleted # 配置逻辑删除字段
   configuration:
     default-enum-type-handler: com.baomidou.mybatisplus.core.handlers.MybatisEnumTypeHandler
+
+file:
+  ShardSize: 10485760

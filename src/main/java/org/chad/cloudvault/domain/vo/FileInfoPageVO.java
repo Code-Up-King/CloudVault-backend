@@ -6,11 +6,11 @@ import lombok.Data;
 @Data
 public class FileInfoPageVO extends Page {
 
-    private String fileId; // 文件ID
+    private Long fileId; // 文件ID
 
     private String fileMd5; // md5值，第一次上传记录
 
-    private String filePid; // 父级ID
+    private Long filePid; // 父级ID
 
     private Long fileSize; // 文件大小
 
