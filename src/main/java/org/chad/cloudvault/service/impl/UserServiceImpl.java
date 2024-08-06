@@ -70,7 +70,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public Result<String> update(UserUpdateDTO requestparm, String token) {
+    public Result<Void> update(UserUpdateDTO requestparm, String token) {
         LambdaUpdateWrapper<User> updateWrapper = Wrappers.lambdaUpdate(User.class)
                 .set(requestparm.getUsername()!=null, User::getUsername, requestparm.getUsername())
                 .set(requestparm.getPassword()!=null, User::getPassword, BCrypt.hashpw(requestparm.getPassword(), BCrypt.gensalt()))
@@ -82,7 +82,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             user.setUsername(requestparm.getUsername());
         }
         getUserMap(token, user);
-        return Result.success("修改成功");
+        return Result.successMsg("修改成功");
+    }
+
+    @Override
+    public Result<Void> logout(String token) {
+        stringRedisTemplate.delete(LOGIN_USER_KEY + token);
+        return Result.successMsg("成功退出登录");
     }
 
     private void getUserMap(String token, UserDTO user) {

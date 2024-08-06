@@ -12,5 +12,7 @@ public interface UserService extends IService<User> {
 
     Result<String> login(UserLoginDTO userLoginDTO);
 
-    Result<String> update(UserUpdateDTO requestparm, String token);
+    Result<Void> update(UserUpdateDTO requestparm, String token);
+
+    Result<Void> logout(String token);
 }
