@@ -15,10 +15,15 @@ import org.chad.cloudvault.domain.dto.UserRegisterDTO;
 import org.chad.cloudvault.domain.dto.UserUpdateDTO;
 import org.chad.cloudvault.domain.entity.Result;
 import org.chad.cloudvault.domain.po.User;
+import org.chad.cloudvault.domain.po.UserInfo;
+import org.chad.cloudvault.domain.vo.UserInfoVO;
 import org.chad.cloudvault.mapper.UserMapper;
+import org.chad.cloudvault.service.UserInfoService;
 import org.chad.cloudvault.service.UserService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -34,7 +39,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     private final StringRedisTemplate stringRedisTemplate;
 
+    private final UserInfoService userInfoService;
+    @Value("${file.init-size}")
+    private Long initSize;
+
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Result<Void> register(UserRegisterDTO userRegisterDTO) {
         if(!userRegisterDTO.getPassword().equals(userRegisterDTO.getConfirmPassword())){
             return Result.error("密码两次输入不一致");
@@ -50,6 +60,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .icon("https://avatars.githubusercontent.com/u/80665075?v=4")
                 .build();
         save(user);
+        UserInfo userInfo = UserInfo.builder()
+                .userId(user.getId())
+                .totalSize(initSize)
+                .freeSize(initSize)
+                .build();
+        userInfoService.save(userInfo);
         return Result.success();
     }
 
@@ -89,6 +105,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public Result<Void> logout(String token) {
         stringRedisTemplate.delete(LOGIN_USER_KEY + token);
         return Result.successMsg("成功退出登录");
+    }
+
+    @Override
+    public Result<UserInfoVO> getUserInfo() {
+        UserInfoVO userInfoVO = BeanUtil.copyProperties(UserHolder.getUser(), UserInfoVO.class);
+        UserInfo userInfo = userInfoService.getById(userInfoVO.getId());
+        userInfoVO.setTotalSize(userInfo.getTotalSize());
+        userInfo.setFreeSize(userInfo.getFreeSize());
+        return Result.success(userInfoVO);
     }
 
     private void getUserMap(String token, UserDTO user) {

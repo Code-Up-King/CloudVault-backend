@@ -21,8 +21,8 @@ import java.util.List;
 
 @Service
 public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> implements FileInfoService {
-    @Value("file.ShardSize")
-    private Integer ShardSize;
+    @Value("${file.shard-size}")
+    private Long shardSize;
     @Override
     public Result<IPage<FileInfoPageVO>> fileList(Integer pageNo) {
         LambdaQueryWrapper<FileInfo> queryWrapper = Wrappers.lambdaQuery(FileInfo.class)

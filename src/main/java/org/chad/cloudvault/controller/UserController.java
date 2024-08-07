@@ -8,6 +8,7 @@ import org.chad.cloudvault.domain.dto.UserLoginDTO;
 import org.chad.cloudvault.domain.dto.UserRegisterDTO;
 import org.chad.cloudvault.domain.dto.UserUpdateDTO;
 import org.chad.cloudvault.domain.entity.Result;
+import org.chad.cloudvault.domain.vo.UserInfoVO;
 import org.chad.cloudvault.domain.vo.UserVO;
 import org.chad.cloudvault.service.UserService;
 import org.springframework.web.bind.annotation.*;
@@ -39,7 +40,7 @@ public class UserController {
     }
 
     @GetMapping("/userInfo")
-    public Result<UserDTO> getUserInfo(){
-        return Result.successDataAndMsg(UserHolder.getUser(), "获取成功");
+    public Result<UserInfoVO> getUserInfo(){
+        return userService.getUserInfo();
     }
 }

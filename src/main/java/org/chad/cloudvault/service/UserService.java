@@ -6,6 +6,7 @@ import org.chad.cloudvault.domain.dto.UserRegisterDTO;
 import org.chad.cloudvault.domain.dto.UserUpdateDTO;
 import org.chad.cloudvault.domain.entity.Result;
 import org.chad.cloudvault.domain.po.User;
+import org.chad.cloudvault.domain.vo.UserInfoVO;
 
 public interface UserService extends IService<User> {
     Result<Void> register(UserRegisterDTO userRegisterDTO);
@@ -15,4 +16,6 @@ public interface UserService extends IService<User> {
     Result<Void> update(UserUpdateDTO requestparm, String token);
 
     Result<Void> logout(String token);
+
+    Result<UserInfoVO> getUserInfo();
 }

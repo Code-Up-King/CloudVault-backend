@@ -31,4 +31,5 @@ mybatis-plus:
     default-enum-type-handler: com.baomidou.mybatisplus.core.handlers.MybatisEnumTypeHandler
 
 file:
-  ShardSize: 10485760
+  init-size: 5368709120
+  shard-size: 10485760
