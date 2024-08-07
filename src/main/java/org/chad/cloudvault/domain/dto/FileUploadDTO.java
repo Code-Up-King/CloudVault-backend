@@ -5,6 +5,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Data
 public class FileUploadDTO {
+    private Long fileId;//文件ID
     private MultipartFile file;//文件
     private String fileName;//文件名
     private Long filePid;//文件的父ID

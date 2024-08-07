@@ -30,8 +30,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-import static org.chad.cloudvault.common.constant.RedisConstants.LOGIN_USER_KEY;
-import static org.chad.cloudvault.common.constant.RedisConstants.LOGIN_USER_TTL;
+import static org.chad.cloudvault.common.constant.RedisConstants.*;
 
 @Service
 @RequiredArgsConstructor
@@ -82,6 +81,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         //将User对象转为HashMap存储
         UserDTO userDTO = BeanUtil.copyProperties(user, UserDTO.class);
         getUserMap(token, userDTO);
+        UserInfo userInfo = userInfoService.getById(user.getId());
+        stringRedisTemplate.opsForValue().set(USERINFO_FREESPACE_KEY + user.getId(), userInfo.getFreeSize().toString());
         return Result.success(token);
     }
 
@@ -104,6 +105,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public Result<Void> logout(String token) {
         stringRedisTemplate.delete(LOGIN_USER_KEY + token);
+        stringRedisTemplate.delete(USERINFO_FREESPACE_KEY + UserHolder.getUser().getId());
         return Result.successMsg("成功退出登录");
     }
 
