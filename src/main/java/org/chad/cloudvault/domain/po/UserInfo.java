@@ -26,16 +26,6 @@ public class UserInfo implements Serializable {
     private Long userId;
 
     /**
-     * 用户名
-     */
-    private String username;
-
-    /**
-     * 用户头像
-     */
-    private String icon = "";
-
-    /**
      * 全部空间
      */
     private Long totalSize;

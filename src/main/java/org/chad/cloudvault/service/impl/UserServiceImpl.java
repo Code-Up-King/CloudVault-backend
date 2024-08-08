@@ -114,7 +114,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         UserInfoVO userInfoVO = BeanUtil.copyProperties(UserHolder.getUser(), UserInfoVO.class);
         UserInfo userInfo = userInfoService.getById(userInfoVO.getId());
         userInfoVO.setTotalSize(userInfo.getTotalSize());
-        userInfo.setFreeSize(userInfo.getFreeSize());
+        userInfoVO.setFreeSize(userInfo.getFreeSize());
         return Result.success(userInfoVO);
     }
 
