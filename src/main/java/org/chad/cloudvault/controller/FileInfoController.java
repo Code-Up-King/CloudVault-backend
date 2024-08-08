@@ -22,7 +22,7 @@ public class FileInfoController {
     }
 
     @PostMapping("/upload")
-    public Result<FileUploadVO> upload(@RequestBody FileUploadDTO requestParm){
+    public Result<FileUploadVO> upload(FileUploadDTO requestParm){
         return fileInfoService.upload(requestParm);
     }
 }
