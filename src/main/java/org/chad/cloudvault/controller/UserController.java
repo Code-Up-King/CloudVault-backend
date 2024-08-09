@@ -6,6 +6,7 @@ import org.chad.cloudvault.domain.dto.UserRegisterDTO;
 import org.chad.cloudvault.domain.dto.UserUpdateDTO;
 import org.chad.cloudvault.domain.entity.Result;
 import org.chad.cloudvault.domain.vo.UserInfoVO;
+import org.chad.cloudvault.domain.vo.UserLoginVO;
 import org.chad.cloudvault.service.UserService;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,7 +23,7 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public Result<String> login(@RequestBody UserLoginDTO userLoginDTO){
+    public Result<UserLoginVO> login(@RequestBody UserLoginDTO userLoginDTO){
         return userService.login(userLoginDTO);
     }
 

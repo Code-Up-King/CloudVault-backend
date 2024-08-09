@@ -17,6 +17,7 @@ import org.chad.cloudvault.domain.entity.Result;
 import org.chad.cloudvault.domain.po.User;
 import org.chad.cloudvault.domain.po.UserInfo;
 import org.chad.cloudvault.domain.vo.UserInfoVO;
+import org.chad.cloudvault.domain.vo.UserLoginVO;
 import org.chad.cloudvault.mapper.UserMapper;
 import org.chad.cloudvault.service.UserInfoService;
 import org.chad.cloudvault.service.UserService;
@@ -65,11 +66,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .freeSize(initSize)
                 .build();
         userInfoService.save(userInfo);
-        return Result.success();
+        return Result.success("注册成功");
     }
 
     @Override
-    public Result<String> login(UserLoginDTO userLoginDTO) {
+    public Result<UserLoginVO> login(UserLoginDTO userLoginDTO) {
         User user = getUserByUsername(userLoginDTO.getUsername());
         if(BeanUtil.isEmpty(user)){
             return Result.error(String.format("用户%s不存在", userLoginDTO.getUsername()));
@@ -83,7 +84,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         getUserMap(token, userDTO);
         UserInfo userInfo = userInfoService.getById(user.getId());
         stringRedisTemplate.opsForValue().set(USERINFO_FREESPACE_KEY + user.getId(), userInfo.getFreeSize().toString());
-        return Result.success(token);
+        return Result.success(new UserLoginVO(token), "登录成功");
     }
 
     @Override
@@ -99,14 +100,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             user.setUsername(requestparm.getUsername());
         }
         getUserMap(token, user);
-        return Result.successMsg("修改成功");
+        return Result.success("修改成功");
     }
 
     @Override
     public Result<Void> logout(String token) {
         stringRedisTemplate.delete(LOGIN_USER_KEY + token);
         stringRedisTemplate.delete(USERINFO_FREESPACE_KEY + UserHolder.getUser().getId());
-        return Result.successMsg("成功退出登录");
+        return Result.success("成功退出登录");
     }
 
     @Override
@@ -115,7 +116,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         UserInfo userInfo = userInfoService.getById(userInfoVO.getId());
         userInfoVO.setTotalSize(userInfo.getTotalSize());
         userInfoVO.setFreeSize(userInfo.getFreeSize());
-        return Result.success(userInfoVO);
+        return Result.success(userInfoVO, "成功获取");
     }
 
     private void getUserMap(String token, UserDTO user) {
@@ -131,7 +132,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     private User getUserByUsername(String username){
         LambdaQueryWrapper<User> queryWrapper = Wrappers.lambdaQuery(User.class)
                 .eq(User::getUsername, username);
-        User user = getOne(queryWrapper);
-        return user;
+        return getOne(queryWrapper);
     }
 }
