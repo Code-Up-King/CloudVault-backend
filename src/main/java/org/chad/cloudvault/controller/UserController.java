@@ -1,21 +1,18 @@
 package org.chad.cloudvault.controller;
 
-import cn.hutool.core.bean.BeanUtil;
 import lombok.RequiredArgsConstructor;
-import org.chad.cloudvault.common.user.UserDTO;
-import org.chad.cloudvault.common.user.UserHolder;
 import org.chad.cloudvault.domain.dto.UserLoginDTO;
 import org.chad.cloudvault.domain.dto.UserRegisterDTO;
 import org.chad.cloudvault.domain.dto.UserUpdateDTO;
 import org.chad.cloudvault.domain.entity.Result;
 import org.chad.cloudvault.domain.vo.UserInfoVO;
-import org.chad.cloudvault.domain.vo.UserVO;
 import org.chad.cloudvault.service.UserService;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/user")
 @RequiredArgsConstructor
+@CrossOrigin
 public class UserController {
 
     private final UserService userService;

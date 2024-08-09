@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/file")
 @RequiredArgsConstructor
+@CrossOrigin
 public class FileInfoController {
 
     private final FileInfoService fileInfoService;
