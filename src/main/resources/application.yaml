@@ -29,7 +29,11 @@ mybatis-plus:
       logic-delete-field: deleted # 配置逻辑删除字段
   configuration:
     default-enum-type-handler: com.baomidou.mybatisplus.core.handlers.MybatisEnumTypeHandler
-
+minio:
+  endpoint: http://116.198.242.154:9090
+  accessKey: minio
+  secretKey: minio123
+  bucketName: cloudvault
 file:
   init-size: 5368709120
   shard-size: 10485760
