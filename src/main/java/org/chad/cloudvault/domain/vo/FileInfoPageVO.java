@@ -4,7 +4,7 @@ import cn.hutool.db.Page;
 import lombok.Data;
 
 @Data
-public class FileInfoPageVO extends Page {
+public class FileInfoPageVO{
 
     private Long fileId; // 文件ID
 
