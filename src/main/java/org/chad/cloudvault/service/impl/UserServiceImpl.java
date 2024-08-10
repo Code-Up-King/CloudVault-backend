@@ -10,6 +10,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.chad.cloudvault.common.user.UserDTO;
 import org.chad.cloudvault.common.user.UserHolder;
+import org.chad.cloudvault.config.MinioConfig;
 import org.chad.cloudvault.domain.dto.UserLoginDTO;
 import org.chad.cloudvault.domain.dto.UserRegisterDTO;
 import org.chad.cloudvault.domain.dto.UserUpdateDTO;
@@ -21,6 +22,7 @@ import org.chad.cloudvault.domain.vo.UserLoginVO;
 import org.chad.cloudvault.mapper.UserMapper;
 import org.chad.cloudvault.service.UserInfoService;
 import org.chad.cloudvault.service.UserService;
+import org.chad.cloudvault.utils.MinioUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -40,6 +42,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     private final StringRedisTemplate stringRedisTemplate;
 
     private final UserInfoService userInfoService;
+
+    private final MinioUtil minioUtil;
+
+    private final MinioConfig minioConfig;
     @Value("${file.init-size}")
     private Long initSize;
 
@@ -66,6 +72,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .freeSize(initSize)
                 .build();
         userInfoService.save(userInfo);
+        minioUtil.createDir(minioConfig.getBucketName(), user.getId().toString());
         return Result.success("注册成功");
     }
 
