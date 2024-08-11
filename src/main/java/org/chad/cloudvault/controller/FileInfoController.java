@@ -11,6 +11,8 @@ import org.chad.cloudvault.domain.vo.TaskInfoVO;
 import org.chad.cloudvault.service.FileInfoService;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/file")
 @RequiredArgsConstructor
@@ -19,9 +21,9 @@ public class FileInfoController {
 
     private final FileInfoService fileInfoService;
 
-    @GetMapping("/list/{page}")
-    public Result<IPage<FileInfoPageVO>> fileList(@PathVariable Integer page){
-        return fileInfoService.fileList(page);
+    @GetMapping("/list/{page}/{filePid}")
+    public Result<IPage<FileInfoPageVO>> fileList(@PathVariable Integer page, @PathVariable Long filePid){
+        return fileInfoService.fileList(page, filePid);
     }
 
     @PostMapping("/upload")
@@ -42,5 +44,10 @@ public class FileInfoController {
     @GetMapping("/getUrl/{fileId}")
     public Result<Void> getUrl(@PathVariable Long fileId){
         return fileInfoService.getUrl(fileId);
+    }
+
+    @DeleteMapping("/delete/")
+    public Result<Void> deleteByFileIds(@RequestBody List<Long> ids){
+        return fileInfoService.deleteByFileIds(ids);
     }
 }

@@ -4,6 +4,7 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.digest.DigestUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -12,7 +13,6 @@ import lombok.RequiredArgsConstructor;
 import org.chad.cloudvault.common.user.UserHolder;
 import org.chad.cloudvault.config.MinioConfig;
 import org.chad.cloudvault.domain.dto.FileUploadDTO;
-import org.chad.cloudvault.domain.dto.InitTaskParamDTO;
 import org.chad.cloudvault.domain.entity.Result;
 import org.chad.cloudvault.domain.po.FileInfo;
 import org.chad.cloudvault.domain.vo.FileExistVO;
@@ -20,7 +20,6 @@ import org.chad.cloudvault.domain.vo.FileInfoPageVO;
 import org.chad.cloudvault.domain.vo.FileUploadVO;
 import org.chad.cloudvault.mapper.FileInfoMapper;
 import org.chad.cloudvault.service.FileInfoService;
-import org.chad.cloudvault.service.UploadTaskService;
 import org.chad.cloudvault.service.UserInfoService;
 import org.chad.cloudvault.utils.FileUtils;
 import org.chad.cloudvault.utils.MinioUtil;
@@ -31,6 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 
@@ -54,9 +55,10 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     private final MinioUtil minioUtil;
 
     @Override
-    public Result<IPage<FileInfoPageVO>> fileList(Integer pageNo) {
+    public Result<IPage<FileInfoPageVO>> fileList(Integer pageNo, Long filePid) {
         LambdaQueryWrapper<FileInfo> queryWrapper = Wrappers.lambdaQuery(FileInfo.class)
                 .eq(FileInfo::getUserId, UserHolder.getUser().getId())
+                .eq(FileInfo::getFilePid, filePid)
                 .eq(FileInfo::getDelFlag, 0)
                 .orderByDesc(FileInfo::getUpdateTime);
         Page<FileInfo> resultPage = page(new Page<>(pageNo, 15), queryWrapper);
@@ -152,9 +154,6 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         if(freeSize < useSpace){
             return Result.error("云盘空间不足");
         }
-        freeSize -= useSpace;
-        stringRedisTemplate.opsForValue().set(USERINFO_FREESPACE_KEY + userId, String.valueOf(freeSize));
-        userInfoService.updateSpace(freeSize);
         return Result.success("用户内存足够");
     }
 
@@ -164,6 +163,49 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         String filePath = fileInfo.getFilePath();
         String url = minioUtil.getPresignedObjectUrl(minioConfig.getBucketName(), filePath);
         return Result.success(url);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Result<Void> deleteByFileIds(List<Long> ids) {
+        LambdaUpdateWrapper<FileInfo> updateWrapper = Wrappers.lambdaUpdate(FileInfo.class)
+                .eq(FileInfo::getUserId, UserHolder.getUser().getId())
+                .in(FileInfo::getFileId, ids)
+                .set(FileInfo::getDelFlag, 1)
+                .set(FileInfo::getRecoveryTime, new Date());
+        boolean update = update(updateWrapper);
+        if(update){
+            LambdaQueryWrapper<FileInfo> queryWrapper = Wrappers.lambdaQuery(FileInfo.class)
+                    .eq(FileInfo::getUserId, UserHolder.getUser().getId())
+                    .in(FileInfo::getFileId, ids)
+                    .eq(FileInfo::getDelFlag, 1);
+            List<FileInfo> list = list(queryWrapper);
+            Long delSize = list.stream()
+                    .mapToLong(FileInfo::getFileSize)
+                    .sum();
+            updateUserSpace(UserHolder.getUser().getId(), delSize, true);
+            list.forEach(fileInfo -> {
+                if(fileInfo.getFolderType() == 1){
+                    //文件夹需要递归删除
+                    minioUtil.removeDir(minioConfig.getBucketName(), fileInfo.getFilePath());
+                }else{
+                    minioUtil.removeFile(minioConfig.getBucketName(), fileInfo.getFilePath());
+                }
+            });
+        }
+        return Result.success("删除成功");
+    }
+
+    private void updateUserSpace(Long userId, Long size, boolean add){
+        //add:true代表相加，false相减
+        String s = stringRedisTemplate.opsForValue().get(USERINFO_FREESPACE_KEY + userId);
+        if(StrUtil.isBlank(s)){
+            throw new RuntimeException("用户空间异常");
+        }
+        long curSize = Long.parseLong(s);
+        long updatedSize = add ? curSize + size : curSize - size;
+        userInfoService.updateSpace(updatedSize);
+        stringRedisTemplate.opsForValue().set(USERINFO_FREESPACE_KEY + userId, String.valueOf(updatedSize));
     }
 
     private void buildFileInfo(Long fileId, Long userId,

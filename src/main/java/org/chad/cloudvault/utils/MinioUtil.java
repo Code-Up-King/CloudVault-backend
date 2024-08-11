@@ -2,8 +2,10 @@ package org.chad.cloudvault.utils;
 
 import cn.hutool.core.util.StrUtil;
 import io.minio.*;
+import io.minio.errors.*;
 import io.minio.http.Method;
 import io.minio.messages.Bucket;
+import io.minio.messages.DeleteError;
 import io.minio.messages.DeleteObject;
 import io.minio.messages.Item;
 import lombok.RequiredArgsConstructor;
@@ -12,11 +14,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.ByteArrayInputStream;
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.net.URLDecoder;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 @Slf4j
@@ -394,6 +395,34 @@ public class MinioUtil {
                 log.error("[Minio工具类]>>>> 批量删除文件，异常：", e);
             }
         });
+    }
+
+    /**
+     * 递归删除文件夹
+     * @param bucketName
+     * @param dirName
+     */
+    public void removeDir(String bucketName, String dirName) {
+        Iterable<Result<Item>> results = listObjects(bucketName, dirName, true);
+        // 准备删除对象列表
+        List<DeleteObject> objectsToDelete = new ArrayList<>();
+        try{
+            for (Result<Item> result : results) {
+                Item item = result.get();
+                objectsToDelete.add(new DeleteObject(item.objectName()));
+            }
+        }catch (Exception e){
+            log.error("[Minio工具类]>>>> 删除文件夹，异常：", e);
+        }
+        // 执行删除操作
+        if (!objectsToDelete.isEmpty()) {
+            minioClient.removeObjects(
+                    RemoveObjectsArgs.builder()
+                            .bucket(bucketName)
+                            .objects(objectsToDelete)
+                            .build()
+            );
+        }
     }
 
     /**
