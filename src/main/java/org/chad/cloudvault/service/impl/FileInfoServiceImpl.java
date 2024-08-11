@@ -30,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -102,6 +103,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
                     objectName = fileInfo.getFilePath() + "/" + fileName;
                 }
                 minioUtil.uploadFile(minioConfig.getBucketName(), uploadFile, objectName, uploadFile.getContentType());
+                updateUserSpace(UserHolder.getUser().getId(), uploadFileSize, false);
                 buildFileInfo(fileId, userId, DigestUtil.md5Hex(uploadFile.getInputStream()), filePid,
                         uploadFileSize, fileName, "",
                         objectName,
@@ -117,7 +119,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     }
 
     @Override
-    public Result<FileExistVO> checkFileExist(String identifier) {
+    public Result<FileExistVO> checkFileExist(String identifier, String fileName) {
         LambdaQueryWrapper<FileInfo> queryWrapper = Wrappers.lambdaQuery(FileInfo.class)
                 .eq(FileInfo::getFileMd5, identifier)
                 .ne(FileInfo::getDelFlag, 2);
@@ -126,18 +128,22 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         if(fileInfoList.size() > 0){
             //2.1有相同文件被上传过
             FileInfo fileInfo = fileInfoList.get(0);
+            fileInfo.setRecoveryTime(null);
+            fileInfo.setDelFlag(0);
+            fileInfo.setFileId(redisIdWorker.nextID(FILE_UPLOAD_KEY));
             Long userId = UserHolder.getUser().getId();
             if(!Objects.equals(fileInfo.getUserId(), userId)){
                 //2.2别人上传的，直接拿来引用即可
                 fileInfo.setUserId(userId);
-                save(fileInfo);
             }else{
                 //2.3自己上传的，需要对本次记录进行改名
-                //TODO:万一是不同名字相同内容的呢？
-                String fileName = fileInfo.getFileName() + '(' + fileInfoList.size() + ')';
-                fileInfo.setFileName(fileName);
-                save(fileInfo);
+                String fileNameOrigin = fileInfo.getFileName();
+                if(fileNameOrigin.equals(fileName)){
+                    fileName = fileNameOrigin + '(' + fileInfoList.size() + ')';
+                }
             }
+            fileInfo.setFileName(fileName);
+            save(fileInfo);
             return Result.success(new FileExistVO(true));
         }
         return Result.success(new FileExistVO(false));
@@ -172,7 +178,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
                 .eq(FileInfo::getUserId, UserHolder.getUser().getId())
                 .in(FileInfo::getFileId, ids)
                 .set(FileInfo::getDelFlag, 1)
-                .set(FileInfo::getRecoveryTime, new Date());
+                .set(FileInfo::getRecoveryTime, LocalDateTime.now());
         boolean update = update(updateWrapper);
         if(update){
             LambdaQueryWrapper<FileInfo> queryWrapper = Wrappers.lambdaQuery(FileInfo.class)

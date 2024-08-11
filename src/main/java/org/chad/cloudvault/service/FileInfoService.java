@@ -16,7 +16,7 @@ public interface FileInfoService extends IService<FileInfo> {
 
     Result<FileUploadVO> upload(FileUploadDTO requestParm);
 
-    Result<FileExistVO> checkFileExist(String identifier);
+    Result<FileExistVO> checkFileExist(String identifier, String fileName);
 
     Result<Void> checkUserSpace(Long useSpace);
 

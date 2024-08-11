@@ -31,9 +31,9 @@ public class FileInfoController {
         return fileInfoService.upload(requestParm);
     }
 
-    @GetMapping("/{identifier}")
-    public Result<FileExistVO> checkFileExist (@PathVariable String identifier) {
-        return fileInfoService.checkFileExist(identifier);
+    @GetMapping("/{identifier}/{fileName}")
+    public Result<FileExistVO> checkFileExist (@PathVariable String identifier, @PathVariable String fileName) {
+        return fileInfoService.checkFileExist(identifier, fileName);
     }
 
     @GetMapping("/checkSpace/{useSpace}")
