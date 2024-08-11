@@ -37,3 +37,8 @@ minio:
 file:
   init-size: 5368709120
   shard-size: 10485760
+wechat:
+  app-id: wxbba59da171843ee4
+  app-secret: 55670f9a2bb46c3428b248c3cb761e06
+  domain: http://4trzx7.natappfree.cc
+  redirect-uri: /user/wechatLogin

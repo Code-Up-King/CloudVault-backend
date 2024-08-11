@@ -41,4 +41,5 @@ public class UserController {
     public Result<UserInfoVO> getUserInfo(){
         return userService.getUserInfo();
     }
+
 }
