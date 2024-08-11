@@ -72,7 +72,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .freeSize(initSize)
                 .build();
         userInfoService.save(userInfo);
-        minioUtil.createDir(minioConfig.getBucketName(), user.getId().toString());
+        minioUtil.createDir(minioConfig.getBucketName(), user.getId().toString() + "/");
         return Result.success("注册成功");
     }
 
