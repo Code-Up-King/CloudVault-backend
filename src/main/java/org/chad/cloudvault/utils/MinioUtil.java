@@ -11,11 +11,15 @@ import io.minio.messages.Item;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.chad.cloudvault.config.MinioConfig;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.ServletOutputStream;
+import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -424,6 +428,38 @@ public class MinioUtil {
             );
         }
     }
+
+    /**
+     * 下载文件
+     * @param bucketName
+     * @param originalName
+     * @param response
+     * @return
+     */
+    public InputStream downloadFile(String bucketName, String originalName, HttpServletResponse response) {
+        try {
+            InputStream file = minioClient.getObject(GetObjectArgs.builder().bucket(bucketName).object(originalName).build());
+            String filename = new String(originalName.getBytes("ISO8859-1"), StandardCharsets.UTF_8);
+            if (StrUtil.isNotBlank(originalName)) {
+                filename = originalName;
+            }
+            response.setHeader("Content-Disposition", "attachment;filename=" + filename);
+            ServletOutputStream servletOutputStream = response.getOutputStream();
+            int len;
+            byte[] buffer = new byte[1024];
+            while ((len = file.read(buffer)) > 0) {
+                servletOutputStream.write(buffer, 0, len);
+            }
+            servletOutputStream.flush();
+            file.close();
+            servletOutputStream.close();
+            return file;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
 
     /**
      * 获取文件外链

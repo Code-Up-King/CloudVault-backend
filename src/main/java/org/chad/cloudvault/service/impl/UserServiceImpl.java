@@ -133,6 +133,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                         .setFieldValueEditor((fieldName, fieldValue) -> fieldValue.toString()));
         String tokenKey = LOGIN_USER_KEY + token;
         stringRedisTemplate.opsForHash().putAll(tokenKey, userMap);
+        //TODO:实际上线的时候需要把对token限时加上
 //        stringRedisTemplate.expire(tokenKey, LOGIN_USER_TTL, TimeUnit.MINUTES);
     }
 

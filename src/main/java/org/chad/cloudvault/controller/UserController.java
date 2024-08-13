@@ -38,6 +38,7 @@ public class UserController {
     }
 
     @GetMapping("/userInfo")
+    @CrossOrigin
     public Result<UserInfoVO> getUserInfo(){
         return userService.getUserInfo();
     }

@@ -18,6 +18,7 @@ import org.chad.cloudvault.domain.po.FileInfo;
 import org.chad.cloudvault.domain.vo.FileExistVO;
 import org.chad.cloudvault.domain.vo.FileInfoPageVO;
 import org.chad.cloudvault.domain.vo.FileUploadVO;
+import org.chad.cloudvault.domain.vo.FileUrlVO;
 import org.chad.cloudvault.mapper.FileInfoMapper;
 import org.chad.cloudvault.service.FileInfoService;
 import org.chad.cloudvault.service.UserInfoService;
@@ -32,7 +33,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 
@@ -71,29 +71,29 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     @Transactional(rollbackFor = Exception.class)
     public Result<FileUploadVO> upload(FileUploadDTO requestParm) {
         FileUploadVO fileUploadVO = new FileUploadVO();
-        //1.文件id生成
+        //文件id生成
         Long fileId = requestParm.getFileId();
-        if(fileId == null || fileId == 0){
-            //第一个分片或者没分片的文件
-            fileId = redisIdWorker.nextID(FILE_UPLOAD_KEY);
-            fileUploadVO.setFileId(fileId);
-        }
         MultipartFile uploadFile = requestParm.getFile();
-        if(uploadFile.isEmpty()){
-            return Result.error("文件未添加");
-        }
         Long userId = UserHolder.getUser().getId();
         Long filePid = requestParm.getFilePid();
         String uploadFileName = uploadFile.getOriginalFilename();
         String fileName = requestParm.getFileName();
         Integer chunkIndex = requestParm.getChunkIndex();
-        long uploadFileSize = uploadFile.getSize();
-        if(StrUtil.isBlank(uploadFileName)){
-            return Result.error("不能上传空文件名的文件");
+        Integer chunks = requestParm.getChunks();
+        if(fileId == 0){
+            //第一个分片或者没分片的文件
+            fileId = redisIdWorker.nextID(FILE_UPLOAD_KEY);
+            fileUploadVO.setFileId(fileId);
         }
-        //3.没有相同文件上传过
-        if(chunkIndex == 0){
-            //4.没分片，小文件秒传
+        if(chunks == 0){
+            //小文件上传
+            if(uploadFile.isEmpty()){
+                return Result.error("文件未添加");
+            }
+            long uploadFileSize = uploadFile.getSize();
+            if(StrUtil.isBlank(uploadFileName)){
+                return Result.error("不能上传空文件名的文件");
+            }
             try {
                 FileInfo fileInfo = getById(filePid);
                 String objectName;
@@ -104,6 +104,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
                 }
                 minioUtil.uploadFile(minioConfig.getBucketName(), uploadFile, objectName, uploadFile.getContentType());
                 updateUserSpace(UserHolder.getUser().getId(), uploadFileSize, false);
+                //TODO:构建文件信息的一些信息需要补充，后续
                 buildFileInfo(fileId, userId, DigestUtil.md5Hex(uploadFile.getInputStream()), filePid,
                         uploadFileSize, fileName, "",
                         objectName,
@@ -114,7 +115,9 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
             }
             return Result.success("上传成功");
         }
-        //5.分片
+        //大文件
+        //TODO:生成分片上传的url，放入redis中
+
         return null;
     }
 
@@ -164,11 +167,13 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     }
 
     @Override
-    public Result<Void> getUrl(Long fileId) {
-        FileInfo fileInfo = getById(fileId);
-        String filePath = fileInfo.getFilePath();
-        String url = minioUtil.getPresignedObjectUrl(minioConfig.getBucketName(), filePath);
-        return Result.success(url);
+    public Result<FileUrlVO> getUrl(List<Long> ids) {
+        List<String> urls = listByIds(ids).stream()
+                .map(FileInfo::getFilePath)
+                .map(filepath ->
+                        minioUtil.getPresignedObjectUrl(minioConfig.getBucketName(), filepath))
+                .toList();
+        return Result.success(new FileUrlVO(urls));
     }
 
     @Override
@@ -200,6 +205,65 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
             });
         }
         return Result.success("删除成功");
+    }
+
+    @Override
+    public Result<Void> updateByFileId(Long fileId, String name) {
+        if(BeanUtil.isEmpty(fileId) || StrUtil.isEmpty(name)){
+            return Result.error("参数不正确");
+        }
+        LambdaQueryWrapper<FileInfo> queryWrapper = Wrappers.lambdaQuery(FileInfo.class)
+                .eq(FileInfo::getFileId, fileId)
+                .eq(FileInfo::getDelFlag, 0);
+        FileInfo fileInfo = getOne(queryWrapper);
+        if(BeanUtil.isEmpty(fileInfo)){
+            return Result.error("不存在该文件");
+        }
+        queryWrapper = Wrappers.lambdaQuery(FileInfo.class)
+                .eq(FileInfo::getFileName, name)
+                .eq(FileInfo::getFilePid, fileInfo.getFilePid())
+                .eq(FileInfo::getDelFlag, 0);
+        FileInfo isExisted = getOne(queryWrapper);
+        if(BeanUtil.isNotEmpty(isExisted)){
+            return Result.error("该文件夹下存在重名文件");
+        }
+        fileInfo.setFileName(name);
+        updateById(fileInfo);
+        return Result.success("修改成功");
+    }
+
+    @Override
+    public Result<IPage<FileInfoPageVO>> recycleFileList(Integer pageNo, Long filePid) {
+        LambdaQueryWrapper<FileInfo> queryWrapper = Wrappers.lambdaQuery(FileInfo.class)
+                .eq(FileInfo::getUserId, UserHolder.getUser().getId())
+                .eq(FileInfo::getFilePid, filePid)
+                .eq(FileInfo::getDelFlag, 2)
+                .orderByDesc(FileInfo::getUpdateTime);
+        Page<FileInfo> resultPage = page(new Page<>(pageNo, 15), queryWrapper);
+        IPage<FileInfoPageVO> convert = resultPage.convert(each -> BeanUtil.copyProperties(each, FileInfoPageVO.class));
+        return Result.success(convert);
+    }
+
+    @Override
+    public Result<Void> addRecycleFile(List<Long> ids) {
+        LambdaUpdateWrapper<FileInfo> updateWrapper = Wrappers.lambdaUpdate(FileInfo.class)
+                .eq(FileInfo::getUserId, UserHolder.getUser().getId())
+                .in(FileInfo::getFileId, ids)
+                .set(FileInfo::getDelFlag, 2)
+                .set(FileInfo::getRecoveryTime, LocalDateTime.now());
+        update(updateWrapper);
+        return Result.success("删除成功");
+    }
+
+    @Override
+    public Result<Void> recovery(List<Long> ids) {
+        LambdaUpdateWrapper<FileInfo> updateWrapper = Wrappers.lambdaUpdate(FileInfo.class)
+                .eq(FileInfo::getUserId, UserHolder.getUser().getId())
+                .in(FileInfo::getFileId, ids)
+                .set(FileInfo::getDelFlag, 0)
+                .set(FileInfo::getRecoveryTime, null);
+        update(updateWrapper);
+        return Result.success("恢复成功");
     }
 
     private void updateUserSpace(Long userId, Long size, boolean add){

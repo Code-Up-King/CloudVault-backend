@@ -4,10 +4,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import lombok.RequiredArgsConstructor;
 import org.chad.cloudvault.domain.dto.FileUploadDTO;
 import org.chad.cloudvault.domain.entity.Result;
-import org.chad.cloudvault.domain.vo.FileExistVO;
-import org.chad.cloudvault.domain.vo.FileInfoPageVO;
-import org.chad.cloudvault.domain.vo.FileUploadVO;
-import org.chad.cloudvault.domain.vo.TaskInfoVO;
+import org.chad.cloudvault.domain.vo.*;
 import org.chad.cloudvault.service.FileInfoService;
 import org.springframework.web.bind.annotation.*;
 
@@ -41,13 +38,13 @@ public class FileInfoController {
         return fileInfoService.checkUserSpace(useSpace);
     }
 
-    @GetMapping("/getUrl/{fileId}")
-    public Result<Void> getUrl(@PathVariable Long fileId){
-        return fileInfoService.getUrl(fileId);
+    @GetMapping("/getUrl/")
+    public Result<FileUrlVO> getUrl(@RequestBody List<Long> ids){
+        return fileInfoService.getUrl(ids);
     }
 
-    @DeleteMapping("/delete/")
-    public Result<Void> deleteByFileIds(@RequestBody List<Long> ids){
-        return fileInfoService.deleteByFileIds(ids);
+    @PutMapping("/update/{fileId}")
+    public Result<Void> updateByFileId(@PathVariable Long fileId, @RequestParam String name){
+        return fileInfoService.updateByFileId(fileId, name);
     }
 }
