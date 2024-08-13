@@ -18,9 +18,14 @@ public class FileInfoController {
 
     private final FileInfoService fileInfoService;
 
-    @GetMapping("/list/{page}/{filePid}")
-    public Result<IPage<FileInfoPageVO>> fileList(@PathVariable Integer page, @PathVariable Long filePid){
-        return fileInfoService.fileList(page, filePid);
+    @GetMapping("/list/{pageNo}/{filePid}")
+    public Result<IPage<FileInfoPageVO>> fileList(@PathVariable Integer pageNo, @PathVariable Long filePid){
+        return fileInfoService.fileList(pageNo, filePid);
+    }
+
+    @GetMapping("/list/{pageNo}/{filePid}")
+    public Result<IPage<FileInfoPageVO>> fileListByCategory(@PathVariable Integer pageNo, @PathVariable Long filePid, @RequestParam Integer category){
+        return fileInfoService.fileListByCategory(pageNo, filePid, category);
     }
 
     @PostMapping("/upload")
@@ -38,7 +43,7 @@ public class FileInfoController {
         return fileInfoService.checkUserSpace(useSpace);
     }
 
-    @GetMapping("/getUrl/")
+    @GetMapping("/getUrl")
     public Result<FileUrlVO> getUrl(@RequestBody List<Long> ids){
         return fileInfoService.getUrl(ids);
     }

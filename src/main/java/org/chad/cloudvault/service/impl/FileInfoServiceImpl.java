@@ -266,6 +266,19 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         return Result.success("恢复成功");
     }
 
+    @Override
+    public Result<IPage<FileInfoPageVO>> fileListByCategory(Integer pageNo, Long filePid, Integer category) {
+        LambdaQueryWrapper<FileInfo> queryWrapper = Wrappers.lambdaQuery(FileInfo.class)
+                .eq(FileInfo::getUserId, UserHolder.getUser().getId())
+                .eq(FileInfo::getFilePid, filePid)
+                .eq(FileInfo::getDelFlag, 0)
+                .eq(FileInfo::getFileCategory, category)
+                .orderByDesc(FileInfo::getUpdateTime);
+        Page<FileInfo> resultPage = page(new Page<>(pageNo, 15), queryWrapper);
+        IPage<FileInfoPageVO> convert = resultPage.convert(each -> BeanUtil.copyProperties(each, FileInfoPageVO.class));
+        return Result.success(convert);
+    }
+
     private void updateUserSpace(Long userId, Long size, boolean add){
         //add:true代表相加，false相减
         String s = stringRedisTemplate.opsForValue().get(USERINFO_FREESPACE_KEY + userId);

@@ -15,9 +15,9 @@ import java.util.List;
 public class RecoveryFileController {
     private final FileInfoService fileInfoService;
 
-    @GetMapping("/list/{page}/{filePid}")
-    public Result<IPage<FileInfoPageVO>> recycleFileList(@PathVariable Integer page, @PathVariable Long filePid){
-        return fileInfoService.recycleFileList(page, filePid);
+    @GetMapping("/list/{pageNo}/{filePid}")
+    public Result<IPage<FileInfoPageVO>> recycleFileList(@PathVariable Integer pageNo, @PathVariable Long filePid){
+        return fileInfoService.recycleFileList(pageNo, filePid);
     }
 
     @DeleteMapping("/add")

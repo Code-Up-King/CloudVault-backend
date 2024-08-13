@@ -32,4 +32,6 @@ public interface FileInfoService extends IService<FileInfo> {
     Result<Void> addRecycleFile(List<Long> ids);
 
     Result<Void> recovery(List<Long> ids);
+
+    Result<IPage<FileInfoPageVO>> fileListByCategory(Integer pageNo, Long filePid, Integer category);
 }
