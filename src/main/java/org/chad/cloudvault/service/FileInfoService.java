@@ -13,7 +13,6 @@ import org.chad.cloudvault.domain.vo.FileUrlVO;
 import java.util.List;
 
 public interface FileInfoService extends IService<FileInfo> {
-    Result<IPage<FileInfoPageVO>> fileList(Integer pageNo, Long filePid);
 
     Result<FileUploadVO> upload(FileUploadDTO requestParm);
 
@@ -33,5 +32,7 @@ public interface FileInfoService extends IService<FileInfo> {
 
     Result<Void> recovery(List<Long> ids);
 
-    Result<IPage<FileInfoPageVO>> fileListByCategory(Integer pageNo, Long filePid, Integer category);
+    Result<IPage<FileInfoPageVO>> fileListByCategory(Integer pageNo, Long filePid, Integer category, Integer pageSize);
+
+    Result<Void> createDir(String name, Long fileId);
 }

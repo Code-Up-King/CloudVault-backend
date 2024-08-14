@@ -259,11 +259,7 @@ public class MinioUtil {
     public ObjectWriteResponse uploadImage(String bucketName, String imageBase64, String imageName) {
         if (!StrUtil.isEmpty(imageBase64)) {
             InputStream in = base64ToInputStream(imageBase64);
-            String newName = System.currentTimeMillis() + "_" + imageName + ".jpg";
-            String year = String.valueOf(new Date().getYear());
-            String month = String.valueOf(new Date().getMonth());
-            return uploadFile(bucketName, year + "/" + month + "/" + newName, in);
-
+            return uploadFile(bucketName, imageName, in);
         }
         return null;
     }
@@ -500,6 +496,6 @@ public class MinioUtil {
      */
     public String getUtf8ByURLDecoder(String str) throws UnsupportedEncodingException {
         String url = str.replaceAll("%(?![0-9a-fA-F]{2})", "%25");
-        return URLDecoder.decode(url, "UTF-8");
+        return URLDecoder.decode(url, StandardCharsets.UTF_8);
     }
 }

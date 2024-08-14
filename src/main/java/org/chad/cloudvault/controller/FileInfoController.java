@@ -19,13 +19,8 @@ public class FileInfoController {
     private final FileInfoService fileInfoService;
 
     @GetMapping("/list/{pageNo}/{filePid}")
-    public Result<IPage<FileInfoPageVO>> fileList(@PathVariable Integer pageNo, @PathVariable Long filePid){
-        return fileInfoService.fileList(pageNo, filePid);
-    }
-
-    @GetMapping("/list/{pageNo}/{filePid}")
-    public Result<IPage<FileInfoPageVO>> fileListByCategory(@PathVariable Integer pageNo, @PathVariable Long filePid, @RequestParam Integer category){
-        return fileInfoService.fileListByCategory(pageNo, filePid, category);
+    public Result<IPage<FileInfoPageVO>> fileList(@PathVariable Integer pageNo, @PathVariable Long filePid, @RequestParam Integer category, @RequestParam Integer pageSize){
+        return fileInfoService.fileListByCategory(pageNo, filePid, category, pageSize);
     }
 
     @PostMapping("/upload")
@@ -51,5 +46,10 @@ public class FileInfoController {
     @PutMapping("/update/{fileId}")
     public Result<Void> updateByFileId(@PathVariable Long fileId, @RequestParam String name){
         return fileInfoService.updateByFileId(fileId, name);
+    }
+
+    @PutMapping("/mkdir")
+    public Result<Void> createDir(@RequestParam String name, @RequestParam Long fileId){
+        return fileInfoService.createDir(name, fileId);
     }
 }

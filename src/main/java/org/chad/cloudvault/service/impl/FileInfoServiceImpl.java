@@ -36,8 +36,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import static org.chad.cloudvault.common.constant.FileConstant.FILE_DEL_FLAG_NORMAL;
-import static org.chad.cloudvault.common.constant.FileConstant.FILE_FOLDER_TYPE_FILE;
+import static org.chad.cloudvault.common.constant.FileConstant.*;
 import static org.chad.cloudvault.common.constant.RedisConstants.FILE_UPLOAD_KEY;
 import static org.chad.cloudvault.common.constant.RedisConstants.USERINFO_FREESPACE_KEY;
 
@@ -54,18 +53,6 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     private final MinioConfig minioConfig;
 
     private final MinioUtil minioUtil;
-
-    @Override
-    public Result<IPage<FileInfoPageVO>> fileList(Integer pageNo, Long filePid) {
-        LambdaQueryWrapper<FileInfo> queryWrapper = Wrappers.lambdaQuery(FileInfo.class)
-                .eq(FileInfo::getUserId, UserHolder.getUser().getId())
-                .eq(FileInfo::getFilePid, filePid)
-                .eq(FileInfo::getDelFlag, 0)
-                .orderByDesc(FileInfo::getUpdateTime);
-        Page<FileInfo> resultPage = page(new Page<>(pageNo, 15), queryWrapper);
-        IPage<FileInfoPageVO> convert = resultPage.convert(each -> BeanUtil.copyProperties(each, FileInfoPageVO.class));
-        return Result.success(convert);
-    }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -116,7 +103,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
             return Result.success("上传成功");
         }
         //大文件
-        //TODO:生成分片上传的url，放入redis中
+        // TODO:生成分片上传的url，放入redis中
 
         return null;
     }
@@ -267,16 +254,41 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     }
 
     @Override
-    public Result<IPage<FileInfoPageVO>> fileListByCategory(Integer pageNo, Long filePid, Integer category) {
+    public Result<IPage<FileInfoPageVO>> fileListByCategory(Integer pageNo, Long filePid, Integer category, Integer pageSize) {
         LambdaQueryWrapper<FileInfo> queryWrapper = Wrappers.lambdaQuery(FileInfo.class)
                 .eq(FileInfo::getUserId, UserHolder.getUser().getId())
                 .eq(FileInfo::getFilePid, filePid)
                 .eq(FileInfo::getDelFlag, 0)
-                .eq(FileInfo::getFileCategory, category)
+                .eq(category != 0, FileInfo::getFileCategory, category)
                 .orderByDesc(FileInfo::getUpdateTime);
-        Page<FileInfo> resultPage = page(new Page<>(pageNo, 15), queryWrapper);
+        Page<FileInfo> resultPage = page(new Page<>(pageNo, pageSize), queryWrapper);
         IPage<FileInfoPageVO> convert = resultPage.convert(each -> BeanUtil.copyProperties(each, FileInfoPageVO.class));
         return Result.success(convert);
+    }
+
+    @Override
+    public Result<Void> createDir(String name, Long fileId) {
+        LambdaQueryWrapper<FileInfo> queryWrapper = Wrappers.lambdaQuery(FileInfo.class)
+                .eq(FileInfo::getFileName, name)
+                .eq(FileInfo::getFilePid, fileId)
+                .eq(FileInfo::getDelFlag, 0);
+        FileInfo fileInfo = getOne(queryWrapper);
+        if(BeanUtil.isNotEmpty(fileInfo)){
+            return Result.error("文件名重复");
+        }
+        String objectName;
+        if(BeanUtil.isEmpty(fileInfo)){
+            objectName = UserHolder.getUser().getId().toString() + "/" + name + "/";
+        }else{
+            objectName = fileInfo.getFilePath() + "/" + name + "/";
+        }
+        buildFileInfo(fileId, UserHolder.getUser().getId(), "", fileId,
+                0L, name, "",
+                objectName,
+                FILE_FOLDER_TYPE_DIR, null,
+                FileUtils.getFileType(name), FILE_DEL_FLAG_NORMAL);
+        minioUtil.createDir(minioConfig.getBucketName(), objectName);
+        return Result.success("创建成功");
     }
 
     private void updateUserSpace(Long userId, Long size, boolean add){

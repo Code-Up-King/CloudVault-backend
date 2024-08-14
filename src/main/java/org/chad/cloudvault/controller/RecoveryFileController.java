@@ -12,6 +12,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/recycle")
+@CrossOrigin
 public class RecoveryFileController {
     private final FileInfoService fileInfoService;
 
