@@ -11,12 +11,14 @@ import lombok.RequiredArgsConstructor;
 import org.chad.cloudvault.common.user.UserDTO;
 import org.chad.cloudvault.common.user.UserHolder;
 import org.chad.cloudvault.config.MinioConfig;
+import org.chad.cloudvault.domain.dto.UserChangePdDTO;
 import org.chad.cloudvault.domain.dto.UserLoginDTO;
 import org.chad.cloudvault.domain.dto.UserRegisterDTO;
 import org.chad.cloudvault.domain.dto.UserUpdateDTO;
 import org.chad.cloudvault.domain.entity.Result;
 import org.chad.cloudvault.domain.po.User;
 import org.chad.cloudvault.domain.po.UserInfo;
+import org.chad.cloudvault.domain.vo.HeadImgUploadVO;
 import org.chad.cloudvault.domain.vo.UserInfoVO;
 import org.chad.cloudvault.domain.vo.UserLoginVO;
 import org.chad.cloudvault.mapper.UserMapper;
@@ -27,13 +29,16 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import static org.chad.cloudvault.common.constant.RedisConstants.*;
+import static org.chad.cloudvault.common.constant.RedisConstants.LOGIN_USER_KEY;
+import static org.chad.cloudvault.common.constant.RedisConstants.USERINFO_FREESPACE_KEY;
 
 @Service
 @RequiredArgsConstructor
@@ -72,7 +77,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .freeSize(initSize)
                 .build();
         userInfoService.save(userInfo);
-        minioUtil.createDir(minioConfig.getBucketName(), user.getId().toString() + "/");
+        minioUtil.createDir(minioConfig.getBucketName(), "pan/" + user.getId().toString() + "/");
         return Result.success("注册成功");
     }
 
@@ -85,6 +90,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if(!BCrypt.checkpw(userLoginDTO.getPassword(), user.getPassword())){
             return Result.error("密码错误");
         }
+        String url = minioUtil.getPresignedObjectUrl(minioConfig.getBucketName(), user.getIcon());
+        user.setIcon(url);
         String token = UUID.randomUUID().toString();
         //将User对象转为HashMap存储
         UserDTO userDTO = BeanUtil.copyProperties(user, UserDTO.class);
@@ -96,15 +103,25 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public Result<Void> update(UserUpdateDTO requestparm, String token) {
+        //http://116.198.242.154:9090/cloudvault/headImg/1
+        // ?X-Amz-Algorithm=AWS4-HMAC-SHA256
+        // &X-Amz-Credential=minio%2F20240814
+        // %2Fus-east-1%2Fs3
+        // %2Faws4_request&X-Amz-Date=20240814T064804Z
+        // &X-Amz-Expires=604800&X-Amz-SignedHeaders=host
+        // &X-Amz-Signature=95789091bd9ad6ad8b89c5cba8257da829b14005f44110e3469d68530d14f108
         LambdaUpdateWrapper<User> updateWrapper = Wrappers.lambdaUpdate(User.class)
                 .set(requestparm.getUsername()!=null, User::getUsername, requestparm.getUsername())
-                .set(requestparm.getPassword()!=null, User::getPassword, BCrypt.hashpw(requestparm.getPassword(), BCrypt.gensalt()))
+                .set(requestparm.getHeadImg()!=null, User::getIcon, urlExtractor(requestparm.getHeadImg()))
                 .eq(User::getId, UserHolder.getUser().getId())
                 .eq(User::getDelFlag, 0);
         update(updateWrapper);
         UserDTO user = UserHolder.getUser();
         if(requestparm.getUsername()!=null){
             user.setUsername(requestparm.getUsername());
+        }
+        if(requestparm.getHeadImg()!=null){
+            user.setIcon(requestparm.getHeadImg());
         }
         getUserMap(token, user);
         return Result.success("修改成功");
@@ -126,6 +143,34 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return Result.success(userInfoVO, "成功获取");
     }
 
+    @Override
+    public Result<HeadImgUploadVO> upload(MultipartFile file) {
+        if(file.isEmpty()){
+            return Result.error("不能上传空文件");
+        }
+        String originalFilename = file.getOriginalFilename();
+        String suffix = originalFilename.substring(originalFilename.lastIndexOf('.'));
+        String imgName = "headImg/" + UserHolder.getUser().getId().toString() + suffix;
+        minioUtil.uploadFile(minioConfig.getBucketName(), file, imgName, file.getContentType());
+        String url = minioUtil.getPresignedObjectUrl(minioConfig.getBucketName(), imgName);
+        return Result.success(new HeadImgUploadVO(url));
+    }
+
+    @Override
+    public Result<Void> changePd(UserChangePdDTO requestparm) {
+        User user = getById(UserHolder.getUser().getId());
+        if(!BCrypt.checkpw(requestparm.getOldPassword(), user.getPassword())){
+            return Result.error("旧密码错误");
+        }
+        if(!requestparm.getNewPassword().equals(requestparm.getConfirmPassword())){
+            return Result.error("两次密码不一致");
+        }
+        String password = BCrypt.hashpw(requestparm.getNewPassword(), BCrypt.gensalt());
+        user.setPassword(password);
+        updateById(user);
+        return Result.success("修改成功");
+    }
+
     private void getUserMap(String token, UserDTO user) {
         Map<String, Object> userMap = BeanUtil.beanToMap(user, new HashMap<>(),
                 CopyOptions.create()
@@ -141,5 +186,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         LambdaQueryWrapper<User> queryWrapper = Wrappers.lambdaQuery(User.class)
                 .eq(User::getUsername, username);
         return getOne(queryWrapper);
+    }
+
+    private String urlExtractor(String url){
+        Pattern pattern = Pattern.compile("/cloudvault/(headImg/[^?]+)");
+        Matcher matcher = pattern.matcher(url);
+        if (matcher.find()) {
+            return matcher.group(1);
+        } else {
+            return url.substring(0, url.indexOf('?'));
+        }
     }
 }

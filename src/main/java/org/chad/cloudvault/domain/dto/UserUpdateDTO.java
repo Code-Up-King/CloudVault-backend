@@ -10,7 +10,7 @@ public class UserUpdateDTO {
     private String username;
 
     /**
-     * 密码
+     * 头像地址
      */
-    private String password;
+    private String headImg;
 }

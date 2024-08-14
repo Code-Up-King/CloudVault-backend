@@ -27,10 +27,10 @@ public class MvcConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowCredentials(true)
-                .allowedOriginPatterns("http://*", "https://*") // 允许所有HTTP和HTTPS协议的来源
-                .allowedMethods("GET", "POST", "PUT", "DELETE")
+                .allowedOrigins("*") // 允许所有来源
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
-                .exposedHeaders("*");
+                .allowCredentials(false) // 不允许凭证
+                .maxAge(3600); // 1 hour
     }
 }
