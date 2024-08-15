@@ -1,6 +1,8 @@
 package org.chad.cloudvault.utils;
 
 import cn.hutool.core.util.StrUtil;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import io.minio.*;
 import io.minio.errors.*;
 import io.minio.http.Method;
@@ -23,6 +25,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 @Slf4j
 @Component
@@ -453,6 +457,50 @@ public class MinioUtil {
         } catch (Exception e) {
             e.printStackTrace();
             return null;
+        }
+    }
+
+    /**
+     * 下载文件夹
+     * @param bucketName
+     * @param folderPrefix
+     * @param response
+     * @throws IOException
+     */
+    public void downloadFolderAsZip(String bucketName, String folderPrefix, HttpServletResponse response){
+        try {
+            Iterable<Result<Item>> results = listObjects(bucketName, folderPrefix, true);
+            response.setStatus(HttpServletResponse.SC_OK);
+            response.addHeader("Content-Disposition", "attachment; filename=\"folder.zip\"");
+
+            try (ZipOutputStream zos = new ZipOutputStream(response.getOutputStream())) {
+                for (Result<Item> result : results) {
+                    Item item = result.get();
+                    if (!item.isDir()) {
+                        ZipEntry zipEntry = new ZipEntry(item.objectName().substring(folderPrefix.length()));
+                        zos.putNextEntry(zipEntry);
+
+                        try (InputStream is = minioClient.getObject(
+                                GetObjectArgs.builder()
+                                        .bucket(bucketName)
+                                        .object(item.objectName())
+                                        .build());
+                             BufferedInputStream bis = new BufferedInputStream(is)) {
+                            byte[] buffer = new byte[4096];
+                            int bytesRead;
+                            while ((bytesRead = bis.read(buffer)) != -1) {
+                                zos.write(buffer, 0, bytesRead);
+                            }
+                            zos.closeEntry();
+                        }
+                    }
+                }
+                zos.finish();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        } catch (RuntimeException e) {
+            throw new RuntimeException(e);
         }
     }
 

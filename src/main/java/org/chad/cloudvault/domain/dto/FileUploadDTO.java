@@ -15,5 +15,4 @@ public class FileUploadDTO {
     private String fileMD5;//文件的MD5值
     private Integer chunkIndex;//分片idx
     private Integer chunks;//总分片数
-    private Long totalSize;
 }

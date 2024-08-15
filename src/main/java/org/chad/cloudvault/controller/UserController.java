@@ -9,6 +9,7 @@ import org.chad.cloudvault.domain.entity.Result;
 import org.chad.cloudvault.domain.vo.HeadImgUploadVO;
 import org.chad.cloudvault.domain.vo.UserInfoVO;
 import org.chad.cloudvault.domain.vo.UserLoginVO;
+import org.chad.cloudvault.domain.vo.UserSpaceVO;
 import org.chad.cloudvault.service.UserService;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -53,6 +54,11 @@ public class UserController {
     @PutMapping("/changePassword")
     public Result<Void> changePd(@RequestBody UserChangePdDTO requestparm){
         return userService.changePd(requestparm);
+    }
+
+    @GetMapping("/getUseSpace")
+    public Result<UserSpaceVO> getUseSpace(){
+        return userService.getUseSpace();
     }
 
 }

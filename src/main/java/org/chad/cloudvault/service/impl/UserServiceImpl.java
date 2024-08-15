@@ -2,6 +2,7 @@ package org.chad.cloudvault.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.digest.BCrypt;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -21,6 +22,7 @@ import org.chad.cloudvault.domain.po.UserInfo;
 import org.chad.cloudvault.domain.vo.HeadImgUploadVO;
 import org.chad.cloudvault.domain.vo.UserInfoVO;
 import org.chad.cloudvault.domain.vo.UserLoginVO;
+import org.chad.cloudvault.domain.vo.UserSpaceVO;
 import org.chad.cloudvault.mapper.UserMapper;
 import org.chad.cloudvault.service.UserInfoService;
 import org.chad.cloudvault.service.UserService;
@@ -121,6 +123,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             user.setUsername(requestparm.getUsername());
         }
         if(requestparm.getHeadImg()!=null){
+            minioUtil.removeFile(minioConfig.getBucketName(), urlExtractor(requestparm.getHeadImg()));
             user.setIcon(requestparm.getHeadImg());
         }
         getUserMap(token, user);
@@ -169,6 +172,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setPassword(password);
         updateById(user);
         return Result.success("修改成功");
+    }
+
+    @Override
+    public Result<UserSpaceVO> getUseSpace() {
+        String s = stringRedisTemplate.opsForValue().get(USERINFO_FREESPACE_KEY + UserHolder.getUser().getId());
+        if(StrUtil.isEmpty(s)){
+            return Result.error("用户的登录状态异常");
+        }
+        return Result.success(new UserSpaceVO(initSize, Long.parseLong(s)));
     }
 
     private void getUserMap(String token, UserDTO user) {

@@ -10,6 +10,7 @@ import org.chad.cloudvault.domain.po.User;
 import org.chad.cloudvault.domain.vo.HeadImgUploadVO;
 import org.chad.cloudvault.domain.vo.UserInfoVO;
 import org.chad.cloudvault.domain.vo.UserLoginVO;
+import org.chad.cloudvault.domain.vo.UserSpaceVO;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface UserService extends IService<User> {
@@ -26,4 +27,6 @@ public interface UserService extends IService<User> {
     Result<HeadImgUploadVO> upload(MultipartFile file);
 
     Result<Void> changePd(UserChangePdDTO requestparm);
+
+    Result<UserSpaceVO> getUseSpace();
 }

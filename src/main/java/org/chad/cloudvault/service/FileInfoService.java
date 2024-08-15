@@ -10,6 +10,7 @@ import org.chad.cloudvault.domain.vo.FileInfoPageVO;
 import org.chad.cloudvault.domain.vo.FileUploadVO;
 import org.chad.cloudvault.domain.vo.FileUrlVO;
 
+import javax.servlet.http.HttpServletResponse;
 import java.util.List;
 
 public interface FileInfoService extends IService<FileInfo> {
@@ -35,4 +36,12 @@ public interface FileInfoService extends IService<FileInfo> {
     Result<IPage<FileInfoPageVO>> fileListByCategory(Integer pageNo, Long filePid, Integer category, Integer pageSize);
 
     Result<Void> createDir(String name, Long fileId);
+
+    Result<List<FileInfoPageVO>> queryByFilename(String match);
+
+    Result<Void> moveFiles(List<Long> ids, Long fileId);
+
+    Result<Void> download(List<Long> ids, HttpServletResponse response);
+
+    Result<List<FileInfoPageVO>> getAllDir(Long fileId);
 }

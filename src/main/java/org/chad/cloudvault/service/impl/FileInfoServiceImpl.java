@@ -30,11 +30,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import static org.chad.cloudvault.common.constant.FileConstant.*;
 import static org.chad.cloudvault.common.constant.RedisConstants.FILE_UPLOAD_KEY;
@@ -89,6 +91,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
                 }else{
                     objectName = fileInfo.getFilePath() + "/" + fileName;
                 }
+                objectName = "pan/" + objectName;
                 minioUtil.uploadFile(minioConfig.getBucketName(), uploadFile, objectName, uploadFile.getContentType());
                 updateUserSpace(UserHolder.getUser().getId(), uploadFileSize, false);
                 //TODO:构建文件信息的一些信息需要补充，后续
@@ -112,7 +115,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     public Result<FileExistVO> checkFileExist(String identifier, String fileName) {
         LambdaQueryWrapper<FileInfo> queryWrapper = Wrappers.lambdaQuery(FileInfo.class)
                 .eq(FileInfo::getFileMd5, identifier)
-                .ne(FileInfo::getDelFlag, 2);
+                .eq(FileInfo::getDelFlag, 0);
         //虽然是软删除，但不能把这个文件当作复用有效文件
         List<FileInfo> fileInfoList = list(queryWrapper);
         if(fileInfoList.size() > 0){
@@ -182,21 +185,21 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
                     .mapToLong(FileInfo::getFileSize)
                     .sum();
             updateUserSpace(UserHolder.getUser().getId(), delSize, true);
-            list.forEach(fileInfo -> {
-                if(fileInfo.getFolderType() == 1){
-                    //文件夹需要递归删除
-                    minioUtil.removeDir(minioConfig.getBucketName(), fileInfo.getFilePath());
-                }else{
-                    minioUtil.removeFile(minioConfig.getBucketName(), fileInfo.getFilePath());
-                }
-            });
+//            list.forEach(fileInfo -> {
+//                if(fileInfo.getFolderType() == 1){
+//                    //文件夹需要递归删除
+//                    minioUtil.removeDir(minioConfig.getBucketName(), fileInfo.getFilePath());
+//                }else{
+//                    minioUtil.removeFile(minioConfig.getBucketName(), fileInfo.getFilePath());
+//                }
+//            });
         }
         return Result.success("删除成功");
     }
 
     @Override
     public Result<Void> updateByFileId(Long fileId, String name) {
-        if(BeanUtil.isEmpty(fileId) || StrUtil.isEmpty(name)){
+        if(StrUtil.isEmpty(name)){
             return Result.error("参数不正确");
         }
         LambdaQueryWrapper<FileInfo> queryWrapper = Wrappers.lambdaQuery(FileInfo.class)
@@ -282,13 +285,72 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         }else{
             objectName = fileInfo.getFilePath() + "/" + name + "/";
         }
-        buildFileInfo(fileId, UserHolder.getUser().getId(), "", fileId,
+        long id = redisIdWorker.nextID(FILE_UPLOAD_KEY);
+        buildFileInfo(id, UserHolder.getUser().getId(), "", fileId,
                 0L, name, "",
                 objectName,
                 FILE_FOLDER_TYPE_DIR, null,
                 FileUtils.getFileType(name), FILE_DEL_FLAG_NORMAL);
         minioUtil.createDir(minioConfig.getBucketName(), objectName);
         return Result.success("创建成功");
+    }
+
+    @Override
+    public Result<List<FileInfoPageVO>> queryByFilename(String match) {
+        List<FileInfoPageVO> fileInfoPageVOS = baseMapper.searchFilesByName(match).stream()
+                .map(fileInfo -> BeanUtil.copyProperties(fileInfo, FileInfoPageVO.class))
+                .toList();
+        return Result.success(fileInfoPageVOS);
+    }
+
+    @Override
+    public Result<Void> moveFiles(List<Long> ids, Long fileId) {
+        FileInfo dir = getById(fileId);
+        if(BeanUtil.isEmpty(dir)){
+            return Result.error("移动到的文件夹不存在");
+        }
+        LambdaUpdateWrapper<FileInfo> updateWrapper = Wrappers.lambdaUpdate(FileInfo.class)
+                .eq(FileInfo::getUserId, UserHolder.getUser().getId())
+                .in(FileInfo::getFileId, ids)
+                .set(FileInfo::getFilePid, fileId);
+        update(updateWrapper);
+        return Result.success("移动成功");
+    }
+
+    @Override
+    public Result<Void> download(List<Long> ids, HttpServletResponse response) {
+        LambdaQueryWrapper<FileInfo> queryWrapper = Wrappers.lambdaQuery(FileInfo.class)
+                .eq(FileInfo::getUserId, UserHolder.getUser().getId())
+                .in(FileInfo::getFileId, ids)
+                .eq(FileInfo::getDelFlag, 0);
+        List<FileInfo> list = list(queryWrapper);
+        ArrayList<FileInfo> all = new ArrayList<>();
+        list.forEach(
+                fileInfo -> {
+                    if(Objects.equals(fileInfo.getFolderType(), FILE_FOLDER_TYPE_DIR)){
+                        all.addAll(findAllForDir(fileInfo.getFileId()));
+                    }else{
+                        minioUtil.downloadFile(minioConfig.getBucketName(), fileInfo.getFilePath(), response);
+                    }
+                }
+        );
+        all.forEach(
+                fileInfo -> minioUtil.downloadFile(minioConfig.getBucketName(), fileInfo.getFilePath(), response)
+        );
+        return Result.success("下载成功");
+    }
+
+    @Override
+    public Result<List<FileInfoPageVO>> getAllDir(Long fileId) {
+        LambdaQueryWrapper<FileInfo> queryWrapper = Wrappers.lambdaQuery(FileInfo.class)
+                .eq(FileInfo::getUserId, UserHolder.getUser().getId())
+                .eq(FileInfo::getFilePid, fileId)
+                .eq(FileInfo::getFolderType, FILE_FOLDER_TYPE_DIR)
+                .eq(FileInfo::getDelFlag, 0);
+        List<FileInfoPageVO> dirs = list(queryWrapper).stream()
+                .map(fileInfo -> BeanUtil.copyProperties(fileInfo, FileInfoPageVO.class))
+                .toList();
+        return Result.success(dirs);
     }
 
     private void updateUserSpace(Long userId, Long size, boolean add){
@@ -325,5 +387,29 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
                 .status(status)
                 .build();
         save(fileInfo);
+    }
+
+    /**
+     * 查询一个文件夹下的所有文件
+     * @param fileId
+     * @return
+     */
+    private List<FileInfo> findAllForDir(Long fileId){
+        LambdaQueryWrapper<FileInfo> queryWrapper = Wrappers.lambdaQuery(FileInfo.class)
+                .eq(FileInfo::getUserId, UserHolder.getUser().getId())
+                .in(FileInfo::getFilePid, fileId)
+                .eq(FileInfo::getDelFlag, 0);
+        List<FileInfo> list = list(queryWrapper);
+        ArrayList<FileInfo> fileInfos = new ArrayList<>(list);
+        list.forEach(
+                fileInfo -> {
+                    if(Objects.equals(fileInfo.getFolderType(), FILE_FOLDER_TYPE_DIR)){
+                        fileInfos.addAll(findAllForDir(fileInfo.getFileId()));
+                    }else{
+                        fileInfos.add(fileInfo);
+                    }
+                }
+        );
+        return fileInfos;
     }
 }
