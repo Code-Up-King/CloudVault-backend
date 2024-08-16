@@ -2,8 +2,6 @@ package org.chad.cloudvault.domain.vo;
 
 import lombok.Data;
 
-import java.util.List;
-
 @Data
 public class FilenameQueryVO {
     private Long fileId; // 文件ID
@@ -27,8 +25,4 @@ public class FilenameQueryVO {
     private Byte fileType; // 1:视频 2:音频 3:图片 4:pdf 5:doc 6:excel 7:txt 8:code 9:zip 10:其他
 
     private Byte status; // 0:转码中 1转码失败 2:转码成功
-    /**
-     * 所有的上级目录
-     */
-    private List<FileInfoPageVO> parent;
 }

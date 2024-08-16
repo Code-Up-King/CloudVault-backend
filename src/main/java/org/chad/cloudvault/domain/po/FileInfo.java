@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import org.chad.cloudvault.common.database.BaseDO;
 
 import java.io.Serializable;
+import java.time.LocalDateTime;
 import java.util.Date;
 
 @Data
@@ -58,5 +59,5 @@ public class FileInfo extends BaseDO implements Serializable {
     private Byte status; // 0:转码中 1转码失败 2:转码成功
 
     @TableField("recovery_time")
-    private Date recoveryTime; // 回收站时间
+    private LocalDateTime recoveryTime; // 回收站时间
 }
