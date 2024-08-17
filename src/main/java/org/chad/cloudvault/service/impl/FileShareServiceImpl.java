@@ -62,6 +62,7 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
             FileInfo fileInfo = fileInfoService.getById(each.getFileId());
             FileSharePageVO fileSharePageVO = BeanUtil.copyProperties(fileInfo, FileSharePageVO.class);
             fileSharePageVO.setShareId(each.getShareId());
+            fileSharePageVO.setCreateTime(each.getCreateTime());
             fileSharePageVO.setExpireTime(each.getExpireTime());
             fileSharePageVO.setShowCount(each.getShowCount());
             fileSharePageVO.setValidType(each.getValidType());
@@ -103,6 +104,7 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
                 .eq(FileShare::getUserId, UserHolder.getUser().getId())
                 .set(FileShare::getDelFlag, 1);
         update(updateWrapper);
+        stringRedisTemplate.delete(SHARE_HAS_KEY + shareId);
         return Result.success("取消成功");
     }
 
@@ -115,6 +117,7 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
         FileShare share = getById(shareId);
         if(!share.getValidType() && share.getExpireTime().isBefore(LocalDateTime.now())){
             //已经过期了
+            stringRedisTemplate.delete(SHARE_HAS_KEY + shareId);
             return Result.error("分享已经过期了");
         }
         ShareInfoVO shareInfoVO = BeanUtil.copyProperties(share, ShareInfoVO.class);
